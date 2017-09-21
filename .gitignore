@@ -5,5 +5,4 @@
 .settings
 .classpath
 /flink-wrapper-application.log
-/resources/
 /dumpfiles/
