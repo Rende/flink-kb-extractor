@@ -4,5 +4,4 @@
 /target/
 .settings
 .classpath
-/flink-wrapper-application.log
 /dumpfiles/
