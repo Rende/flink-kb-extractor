@@ -22,14 +22,8 @@ import org.json.JSONObject;
  *
  */
 public class WikidataSource implements SourceFunction<JSONObject> {
-
-	/**
-	 *
-	 */
 	private static final long serialVersionUID = 1L;
-	/**
-	 *
-	 */
+
 	private volatile boolean isRunning = true;
 	private String inputFilePath;
 
