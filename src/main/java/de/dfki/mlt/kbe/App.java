@@ -1,30 +1,39 @@
 package de.dfki.mlt.kbe;
 
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
 
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.elasticsearch2.ElasticsearchSink;
+import org.apache.log4j.Logger;
 import org.json.JSONObject;
 
+import de.dfki.mlt.kbe.es.ElasticsearchService;
 import de.dfki.mlt.kbe.preferences.Config;
+import de.dfki.mlt.kbe.sink.ClaimSink;
+import de.dfki.mlt.kbe.sink.EntitySink;
+import de.dfki.mlt.kbe.source.WikidataSource;
 
 /**
  * @author Aydan Rende, DFKI
  *
  */
 public class App {
+	public static final Logger logger = Logger.getLogger(App.class);
+
 	public static void main(String[] args) throws Exception {
+		logger.info("Wikidata knowledgebase extraction started.");
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment
 				.getExecutionEnvironment().setParallelism(
 						Config.getInstance().getInt(Config.THREAD_NUM));
+		ElasticsearchService esService = new ElasticsearchService();
+		try {
+			esService.checkAndCreateIndex(Config.getInstance().getString(
+					Config.INDEX_NAME));
 
+		} catch (IOException | InterruptedException e) {
+			e.printStackTrace();
+		}
 		// read entities from json dump file
 		// create json object stream
 		DataStream<JSONObject> jsonStream = env.addSource(new WikidataSource(
@@ -37,33 +46,15 @@ public class App {
 	}
 
 	private static void sinkEntitiesToES(DataStream<JSONObject> jsonStream) {
-		jsonStream.addSink(new ElasticsearchSink<>(getElasticSearchConfig(),
-				getTransportAddresses(), new EntitySink()));
+		jsonStream.addSink(new ElasticsearchSink<>(ElasticsearchService
+				.getUserConfig(), ElasticsearchService.getTransportAddresses(),
+				new EntitySink()));
 	}
 
 	private static void sinkClaimsToES(DataStream<JSONObject> jsonStream) {
-		jsonStream.addSink(new ElasticsearchSink<>(getElasticSearchConfig(),
-				getTransportAddresses(), new ClaimSink()));
+		jsonStream.addSink(new ElasticsearchSink<>(ElasticsearchService
+				.getUserConfig(), ElasticsearchService.getTransportAddresses(),
+				new ClaimSink()));
 	}
 
-	public static Map<String, String> getElasticSearchConfig() {
-		Map<String, String> config = new HashMap<>();
-		config.put("cluster.name",
-				Config.getInstance().getString(Config.CLUSTER_NAME));
-		config.put("bulk.flush.max.actions",
-				Config.getInstance().getString(Config.BULK_FLUSH_MAX_ACTIONS));
-		return config;
-	}
-
-	public static List<InetSocketAddress> getTransportAddresses() {
-		List<InetSocketAddress> transportAddresses = new ArrayList<>();
-		try {
-			transportAddresses.add(new InetSocketAddress(InetAddress
-					.getByName(Config.getInstance().getString(Config.HOST)),
-					Config.getInstance().getInt(Config.PORT)));
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		}
-		return transportAddresses;
-	}
 }

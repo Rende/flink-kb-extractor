@@ -1,7 +1,7 @@
 /**
  *
  */
-package de.dfki.mlt.kbe;
+package de.dfki.mlt.kbe.source;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;

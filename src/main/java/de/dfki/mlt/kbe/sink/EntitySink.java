@@ -1,7 +1,7 @@
 /**
  *
  */
-package de.dfki.mlt.kbe;
+package de.dfki.mlt.kbe.sink;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -26,24 +26,31 @@ public class EntitySink implements ElasticsearchSinkFunction<JSONObject> {
 	private static final long serialVersionUID = 1L;
 
 	public List<IndexRequest> createEntityIndexRequest(JSONObject jsonObj)
-			throws IOException, JSONException {
+			throws IOException {
 		List<IndexRequest> requestList = new ArrayList<IndexRequest>();
 		String type = jsonObj.getString("type");
 		String id = jsonObj.getString("id");
-		JSONObject labelObj = jsonObj.getJSONObject("labels").getJSONObject(
-				"en");
-		String label = labelObj.getString("value");
-		XContentBuilder builder = XContentFactory.jsonBuilder().startObject()
-				.field("id", id).field("type", type).field("label", label)
-				.endObject();
 
-		requestList.add(Requests.indexRequest().index("wikidata-index")
-				.type("wikidata-entity").source(builder.string()));
+		if (jsonObj.getJSONObject("labels").has("en")
+				&& !jsonObj.getJSONObject("labels").isNull("en")) {
+			JSONObject labelObj = jsonObj.getJSONObject("labels")
+					.getJSONObject("en");
+			String label = labelObj.getString("value");
+			XContentBuilder builder = XContentFactory.jsonBuilder()
+					.startObject().field("id", id).field("type", type)
+					.field("label", label).endObject();
+			requestList.add(Requests.indexRequest().index("wikidata-index")
+					.type("wikidata-entity").source(builder.string()));
+		}
 
-		JSONArray aliasArr = jsonObj.getJSONObject("aliases").getJSONArray("en");
+		if (jsonObj.getJSONObject("aliases").has("en")
+				&& !jsonObj.getJSONObject("aliases").isNull("en")) {
+			JSONArray aliasArr = jsonObj.getJSONObject("aliases").getJSONArray(
+					"en");
+			requestList.addAll(createEntityIndexRequestFromAliases(id, type,
+					aliasArr));
+		}
 
-		requestList.addAll(createEntityIndexRequestFromAliases(id, type,
-				aliasArr));
 		return requestList;
 	}
 
@@ -74,7 +81,7 @@ public class EntitySink implements ElasticsearchSinkFunction<JSONObject> {
 					.toArray(new IndexRequest[0]);
 			indexer.add(requestArray);
 		} catch (JSONException e) {
-			 e.printStackTrace();
+			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

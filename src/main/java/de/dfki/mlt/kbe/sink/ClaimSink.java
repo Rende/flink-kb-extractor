@@ -1,7 +1,7 @@
 /**
  *
  */
-package de.dfki.mlt.kbe;
+package de.dfki.mlt.kbe.sink;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -53,38 +53,45 @@ public class ClaimSink implements ElasticsearchSinkFunction<JSONObject> {
 	}
 
 	private XContentBuilder buildClaimRequest(String entityId,
-			String propertyId, JSONArray snakArray) throws IOException,
-			JSONException {
+			String propertyId, JSONArray snakArray) throws IOException {
 		XContentBuilder builder = null;
-		JSONObject dataJson = ((JSONObject) snakArray.get(0)).getJSONObject(
-				"mainsnak").getJSONObject("datavalue");
-		String dataType = dataJson.getString("type");
-		String dataValue = "";
-		switch (dataType) {
-		case "string":
-			dataValue = dataJson.getString("value");
-			break;
-		case "wikibase-entityid":
-			dataValue = dataJson.getJSONObject("value").getString("id");
-			break;
-		case "globecoordinate":
-			dataValue = dataJson.getJSONObject("value").get("latitude") + " ; "
-					+ dataJson.getJSONObject("value").get("longitude");
-			break;
-		case "quantity":
-			dataValue = dataJson.getJSONObject("value").getString("amount")
-					+ " ; " + dataJson.getJSONObject("value").getString("unit");
-			break;
-		case "time":
-			dataValue = dataJson.getJSONObject("value").getString("time");
-			break;
-		default:
-			break;
+		if (((JSONObject) snakArray.get(0)).getJSONObject("mainsnak").has(
+				"datavalue")
+				&& !((JSONObject) snakArray.get(0)).getJSONObject("mainsnak")
+						.isNull("datavalue")) {
+			JSONObject dataJson = ((JSONObject) snakArray.get(0))
+					.getJSONObject("mainsnak").getJSONObject("datavalue");
+			String dataType = dataJson.getString("type");
+			String dataValue = "";
+			switch (dataType) {
+			case "string":
+				dataValue = dataJson.getString("value");
+				break;
+			case "wikibase-entityid":
+				dataValue = dataJson.getJSONObject("value").getString("id");
+				break;
+			case "globecoordinate":
+				dataValue = dataJson.getJSONObject("value").get("latitude")
+						+ " ; "
+						+ dataJson.getJSONObject("value").get("longitude");
+				break;
+			case "quantity":
+				dataValue = dataJson.getJSONObject("value").getString("amount")
+						+ " ; "
+						+ dataJson.getJSONObject("value").getString("unit");
+				break;
+			case "time":
+				dataValue = dataJson.getJSONObject("value").getString("time");
+				break;
+			default:
+				break;
+			}
+			builder = XContentFactory.jsonBuilder().startObject()
+					.field("entity_id", entityId)
+					.field("property_id", propertyId)
+					.field("data_type", dataType)
+					.field("data_value", dataValue).endObject();
 		}
-		builder = XContentFactory.jsonBuilder().startObject()
-				.field("entity_id", entityId).field("property_id", propertyId)
-				.field("data_type", dataType).field("data_value", dataValue)
-				.endObject();
 		return builder;
 	}
 
